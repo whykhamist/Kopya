@@ -22,51 +22,54 @@ namespace Kopya
         public static async Task<bool> File(string iSource, string iTarget, IProgress<FileCopyProgressInfo> progress = null, CancellationToken cancelToken = default)
 		{
 			FileCopyProgressInfo CPFI = new();
+
 			try
 			{
-				FileStream fsOut = new(iTarget, FileMode.Create);
-				FileStream fsIn = new(iSource, FileMode.Open, FileAccess.Read);
-				FileAttributes curAttributes = System.IO.File.GetAttributes(iSource);
-				byte[] bt = new byte[2097152];
-				CPFI.FileSize = fsIn.Length;
-				CPFI.Progress = 0;
-				CPFI.FileName = new FileInfo(iSource).Name;
-				while (true)
+				using (FileStream fsOut = new(iTarget, FileMode.Create))
 				{
-					int num;
-					int readByte = num = fsIn.Read(bt, 0, bt.Length);
-					if (num <= 0) { break; }
-					// Cancel file copy
-					if (cancelToken.IsCancellationRequested)
+					using (FileStream fsIn = new(iSource, FileMode.Open, FileAccess.Read))
 					{
-						CPFI.Cancelled = true;
-						progress?.Report(CPFI);
-						break;
+						FileAttributes curAttributes = System.IO.File.GetAttributes(iSource);
+						byte[] bt = new byte[2097152];
+						CPFI.FileSize = fsIn.Length;
+						CPFI.Progress = 0;
+						CPFI.FileName = new FileInfo(iSource).Name;
+						long currentPosition = 0L;
+						while (true)
+						{
+							int num;
+							int readByte = num = fsIn.Read(bt, 0, bt.Length);
+							if (num <= 0) { break; }
+
+							await fsOut.WriteAsync(bt.AsMemory(0, readByte), cancelToken);
+
+							CPFI.FileSizeCopied += readByte;
+							currentPosition = fsIn.Position;
+							CPFI.Progress = fsIn.Position * 100 / fsIn.Length;
+
+							progress?.Report(CPFI);
+							await Task.Delay(10, cancelToken);
+						}
+
+						System.IO.File.SetAttributes(iTarget, curAttributes);
+
+						fsOut.Close();
+						fsIn.Close();
 					}
-
-					await fsOut.WriteAsync(bt.AsMemory(0, readByte), cancelToken);
-
-					CPFI.FileSizeCopied += readByte;
-					CPFI.Progress = fsIn.Position * 100 / fsIn.Length;
-
-					progress?.Report(CPFI);
-					await Task.Delay(10, cancelToken);
-				}
-
-				System.IO.File.SetAttributes(iTarget, curAttributes);
-
-				fsOut.Close();
-				fsIn.Close();
-
-				// Make sure to delete file if copying is not complete
-				if (CPFI.Cancelled)
-				{
-					System.IO.File.Delete(iTarget);
 				}
 
 				return true;
 			}
-			catch (Exception)
+			catch (TaskCanceledException)
+			{
+				CPFI.Cancelled = true;
+				progress?.Report(CPFI);
+				
+				// Make sure to delete file if copying is not complete
+				System.IO.File.Delete(iTarget);
+				return false;
+			}
+			catch (Exception e)
 			{
 				return false;
 			}
