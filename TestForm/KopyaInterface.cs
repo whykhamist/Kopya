@@ -17,7 +17,7 @@ namespace TestForm
     {
         private bool Copying = false;
 
-        private readonly CancellationTokenSource CancelToken;
+        private CancellationTokenSource CancelToken;
 
         public Form1()
         {
@@ -25,6 +25,7 @@ namespace TestForm
             CancelToken = new CancellationTokenSource();
 
             ResetErrorMessages();
+            ResetForm();
 
             this.Height -= 106;
         }
@@ -45,14 +46,7 @@ namespace TestForm
                     StartBtn.Text = "Cancel";
                     if (FileRadio.Checked)
                     {
-                        var fileProgress = new Progress<FileCopyProgressInfo>(cProgress =>
-                        {
-                            StatMsgLbl.Text = $"Copying {cProgress.FileName} {cProgress.FileSizeCopied}/{cProgress.FileSize}";
-                            TotalProg.Value = CurrentProg.Value = (int)cProgress.Progress;
-                            TotalProgLbl.Text = CurrentProgLbl.Text = $"{cProgress.Progress}%";
-                        });
-                        await Copy.File(SourceTxt.Text, DestinationTxt.Text, fileProgress, CancelToken.Token);
-                        if(!CancelToken.IsCancellationRequested) await CopyComplete();
+                        await StartFileCopy();
                     }
                     else
                     {
@@ -60,6 +54,33 @@ namespace TestForm
                     }
                 }
             }
+        }
+
+        private async Task StartFileCopy()
+        {
+            try
+            {
+                CancelToken.Dispose();
+                CancelToken = new CancellationTokenSource();
+                var fileProgress = new Progress<FileCopyProgressInfo>(cProgress =>
+                {
+                    StatMsgLbl.Text = $"Copying {cProgress.FileName}";
+                    SizeStatLbl.Text = $"{Helpers.GetBytesReadable(cProgress.FileSizeCopied)}/{Helpers.GetBytesReadable(cProgress.FileSize)}";
+                    TotalProg.Value = CurrentProg.Value = (int)cProgress.Progress;
+                    TotalProgLbl.Text = CurrentProgLbl.Text = $"{cProgress.Progress}%";
+                    if (cProgress.Cancelled)
+                    {
+                        MessageBox.Show("Operation was cancelled!");
+                    }
+                });
+                await Task.Run(() => Copy.File(SourceTxt.Text, DestinationTxt.Text, fileProgress, CancelToken.Token));
+                if (!CancelToken.IsCancellationRequested)
+                {
+                    await CopyComplete();
+                }
+            }
+            catch (TaskCanceledException)
+            { }
         }
 
         private async Task CopyComplete()
@@ -76,6 +97,7 @@ namespace TestForm
             StatMsgLbl.Text = "Copy cancelled! Stopped by user!";
             Copying = false;
             StartBtn.Text = "Start";
+            //ResetForm();
         }
 
         private bool ValidateForm()
@@ -102,6 +124,13 @@ namespace TestForm
         private void ResetErrorMessages()
         {
             SourceErrorLbl.Text = DestinationErrorLbl.Text = string.Empty;
+        }
+
+        private void ResetForm()
+        {
+            SizeStatLbl.Text =
+            SourceTxt.Text =
+            DestinationTxt.Text = string.Empty;
         }
 
         private async Task ResizeForm(bool expand)

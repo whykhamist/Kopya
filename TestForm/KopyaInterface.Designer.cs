@@ -48,6 +48,7 @@ namespace TestForm
             this.panel1 = new System.Windows.Forms.Panel();
             this.SourceErrorLbl = new System.Windows.Forms.Label();
             this.DestinationErrorLbl = new System.Windows.Forms.Label();
+            this.SizeStatLbl = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -214,6 +215,7 @@ namespace TestForm
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.SizeStatLbl);
             this.panel1.Controls.Add(this.label2);
             this.panel1.Controls.Add(this.CurrentProg);
             this.panel1.Controls.Add(this.TotalProg);
@@ -245,6 +247,16 @@ namespace TestForm
             this.DestinationErrorLbl.Name = "DestinationErrorLbl";
             this.DestinationErrorLbl.Size = new System.Drawing.Size(244, 15);
             this.DestinationErrorLbl.TabIndex = 0;
+            // 
+            // SizeStatLbl
+            // 
+            this.SizeStatLbl.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.SizeStatLbl.AutoEllipsis = true;
+            this.SizeStatLbl.Location = new System.Drawing.Point(118, 42);
+            this.SizeStatLbl.Name = "SizeStatLbl";
+            this.SizeStatLbl.Size = new System.Drawing.Size(163, 15);
+            this.SizeStatLbl.TabIndex = 1;
+            this.SizeStatLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // Form1
             // 
@@ -294,6 +306,7 @@ namespace TestForm
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Label SourceErrorLbl;
         private System.Windows.Forms.Label DestinationErrorLbl;
+        private System.Windows.Forms.Label SizeStatLbl;
     }
 }
 
