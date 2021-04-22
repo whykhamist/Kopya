@@ -13,13 +13,15 @@ namespace Kopya
 
 		private static FolderInformation FolderInfo { get; set; }
 
-		private static FolderCopyProgressInfo FolderCPI { get; set; } = new FolderCopyProgressInfo();
+		private static FolderCopyProgressInfo FolderCPI { get; set; }
 
-        #endregion
+		private static long doneCopyingSizeTotal { get; set; } = 0L;
 
-        #region Public Methods
+		#endregion
 
-        public static async Task<bool> File(string iSource, string iTarget, IProgress<FileCopyProgressInfo> progress = null, CancellationToken cancelToken = default)
+		#region Public Methods
+
+		public static async Task<bool> File(string iSource, string iTarget, IProgress<FileCopyProgressInfo> progress = null, CancellationToken cancelToken = default)
 		{
 			FileCopyProgressInfo CPFI = new();
 
@@ -79,7 +81,7 @@ namespace Kopya
 		public static async Task<bool> Folder(DirectoryInfo iSource, DirectoryInfo iTarget, IProgress<FolderCopyProgressInfo> progress = null, CancellationToken cancelToken = default)
 		{
 			FolderInfo = GetFolderInfo(iSource);
-			return await CopyFolder(iSource, iTarget, new Progress<FolderCopyProgressInfo>(P => progress?.Report(P)), cancelToken);
+			return await CopyFolder(iSource, iTarget, false, new Progress<FolderCopyProgressInfo>(P => progress?.Report(P)), cancelToken);
 		}
 
 		public static FolderInformation GetFolderInfo(DirectoryInfo source)
@@ -104,67 +106,95 @@ namespace Kopya
 			return folderInfo;
 		}
 
-        #endregion
+		#endregion
 
-        #region Private Methods
+		#region Private Methods
 
-        private static async Task<bool> CopyFolder(DirectoryInfo iSource, DirectoryInfo iTarget, IProgress<FolderCopyProgressInfo> progress = null, CancellationToken cancelToken = default)
+		private static async Task<bool> CopyFolder(DirectoryInfo iSource, DirectoryInfo iTarget, bool subFolderCopy = false, IProgress<FolderCopyProgressInfo> progress = null, CancellationToken cancelToken = default)
 		{
-			if (!Directory.Exists(iTarget.FullName))
+			try
 			{
-				Directory.CreateDirectory(iTarget.FullName);
-			}
-			FileInfo[] files = iSource.GetFiles();
-			FolderCPI.Location = FolderInfo.Location;
-			FolderCPI.FileCount = FolderInfo.FileCount;
-			FolderCPI.FolderCount = FolderInfo.FolderCount;
-			FolderCPI.Size = FolderInfo.Size;
-
-			foreach (FileInfo fi in files)
-			{
-				if (cancelToken.IsCancellationRequested)
+				if (!Directory.Exists(iTarget.FullName))
 				{
-					FolderCPI.Cancelled = true;
-					break;
+					Directory.CreateDirectory(iTarget.FullName);
+				}
+				FileInfo[] files = iSource.GetFiles();
+
+                if (!subFolderCopy)
+                {
+					FolderCPI = new FolderCopyProgressInfo();
+					doneCopyingSizeTotal = 0L;
+					FinishedCount = 0;
 				}
 
-				FinishedCount++;
-				FolderCPI.FinishedCount = FinishedCount;
-				FolderCPI.FileCopyProgressInfo.FileName = fi.Name;
-				FolderCPI.FileName = fi.Name;
-				FolderCPI.Progress = FinishedCount * 100 / FolderInfo.FileCount;
-				FolderCPI.FullName = fi.FullName;
-				FolderCPI.Destination = Path.Combine(iTarget.ToString(), fi.Name);
+				FolderCPI.Location = FolderInfo.Location;
+				FolderCPI.FileCount = FolderInfo.FileCount;
+				FolderCPI.FolderCount = FolderInfo.FolderCount;
+				FolderCPI.Size = FolderInfo.Size;
 
-				var FileProgress = new Progress<FileCopyProgressInfo>(FileCPI => {
-					FolderCPI.FileCopyProgressInfo = FileCPI;
+				foreach (FileInfo fi in files)
+				{
+					if (cancelToken.IsCancellationRequested)
+					{
+						FolderCPI.Cancelled = true;
+						break;
+					}
+
+					FolderCPI.FileCopyProgressInfo.FileName = fi.Name;
+					FolderCPI.FileName = fi.Name;
+					FolderCPI.FullName = fi.FullName;
+					FolderCPI.Destination = Path.Combine(iTarget.ToString(), fi.Name);
+
+					var FileProgress = new Progress<FileCopyProgressInfo>(FileCPI =>
+					{
+						FolderCPI.FinishedSize = FileCPI.FileSizeCopied + doneCopyingSizeTotal;
+						FolderCPI.FileCopyProgressInfo = FileCPI;
+						progress?.Report(FolderCPI);
+					});
+					await File(FolderCPI.FullName, FolderCPI.Destination, FileProgress, cancelToken);
+
+					doneCopyingSizeTotal += fi.Length;
+					if (!cancelToken.IsCancellationRequested)
+					{
+						FinishedCount++;
+						FolderCPI.FinishedCount = FinishedCount;
+						FolderCPI.Progress = FinishedCount * 100 / FolderInfo.FileCount;
+					}
 					progress?.Report(FolderCPI);
-				});
 
-				await File(FolderCPI.FullName, FolderCPI.Destination, FileProgress, cancelToken);
+				}
+
+				DirectoryInfo[] directories = iSource.GetDirectories();
+				foreach (DirectoryInfo diSourceSubDir in directories)
+				{
+					if (cancelToken.IsCancellationRequested)
+					{
+						FolderCPI.Cancelled = true;
+						break;
+					}
+
+					DirectoryInfo nextTargetSubDir = iTarget.CreateSubdirectory(diSourceSubDir.Name);
+
+					var FolderProgress = new Progress<FolderCopyProgressInfo>(
+						FolderCPI => progress?.Report(FolderCPI)
+					);
+
+					await CopyFolder(diSourceSubDir, nextTargetSubDir,true, FolderProgress, cancelToken);
+
+				}
+				return true;
+			}
+			catch (TaskCanceledException)
+			{
+				FolderCPI.Cancelled = true;
 				progress?.Report(FolderCPI);
 
+				return false;
 			}
-
-			DirectoryInfo[] directories = iSource.GetDirectories();
-			foreach (DirectoryInfo diSourceSubDir in directories)
+			catch (Exception e)
 			{
-				if (cancelToken.IsCancellationRequested)
-				{
-					FolderCPI.Cancelled = true;
-					break;
-				}
-
-				DirectoryInfo nextTargetSubDir = iTarget.CreateSubdirectory(diSourceSubDir.Name);
-
-				var FolderProgress = new Progress<FolderCopyProgressInfo>(
-					FolderCPI => progress?.Report(FolderCPI)
-				);
-
-				await CopyFolder(diSourceSubDir, nextTargetSubDir, FolderProgress, cancelToken);
-
+				return false;
 			}
-			return true;
 		}
 
         #endregion

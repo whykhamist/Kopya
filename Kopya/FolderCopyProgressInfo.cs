@@ -35,5 +35,10 @@ namespace Kopya
         /// The number of files successfully copied.
         /// </summary>
         public int FinishedCount { get; set; }
+
+        /// <summary>
+        /// The total size of successfully copied files.
+        /// </summary>
+        public long FinishedSize { get; set; }
     }
 }
