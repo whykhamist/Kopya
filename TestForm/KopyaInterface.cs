@@ -42,26 +42,62 @@ namespace TestForm
                 }
                 else
                 {
+                    CurrentProg.Value = TotalProg.Value = 0;
                     Copying = true;
                     StartBtn.Text = "Cancel";
+                    CancelToken.Dispose();
+                    CancelToken = new CancellationTokenSource();
+
+
                     if (FileRadio.Checked)
                     {
                         await StartFileCopy();
                     }
                     else
                     {
+                        await StartFolderCopy();
+                    }
 
+                    if (!CancelToken.IsCancellationRequested)
+                    {
+                        await CopyComplete();
                     }
                 }
             }
         }
 
+        private async Task StartFolderCopy()
+        {
+            try
+            {
+                var folderProgress = new Progress<FolderCopyProgressInfo>(cProgress =>
+                {
+                    StatMsgLbl.Text = $"Copying {cProgress.FileCopyProgressInfo.FileName}";
+                    SizeStatLbl.Text = $"{Helpers.GetBytesReadable(cProgress.FinishedSize)}/{Helpers.GetBytesReadable(cProgress.Size)}";
+                    
+                    CurrentProg.Value = (int)cProgress.FileCopyProgressInfo.Progress;
+                    CurrentProgLbl.Text = $"{cProgress.FileCopyProgressInfo.Progress}%";
+
+                    TotalProg.Value = (int)cProgress.Progress;
+                    TotalProgLbl.Text = $"{cProgress.Progress}%";
+
+                    if (cProgress.Cancelled)
+                    {
+                        CancelCopy();
+                    }
+                });
+                await Task.Run(() => Copy.Folder(new DirectoryInfo(SourceTxt.Text), new DirectoryInfo(DestinationTxt.Text), folderProgress, CancelToken.Token));
+
+            }
+            catch (TaskCanceledException)
+            { }
+        }
+
+
         private async Task StartFileCopy()
         {
             try
             {
-                CancelToken.Dispose();
-                CancelToken = new CancellationTokenSource();
                 var fileProgress = new Progress<FileCopyProgressInfo>(cProgress =>
                 {
                     StatMsgLbl.Text = $"Copying {cProgress.FileName}";
@@ -70,14 +106,10 @@ namespace TestForm
                     TotalProgLbl.Text = CurrentProgLbl.Text = $"{cProgress.Progress}%";
                     if (cProgress.Cancelled)
                     {
-                        MessageBox.Show("Operation was cancelled!");
+                        CancelCopy();
                     }
                 });
                 await Task.Run(() => Copy.File(SourceTxt.Text, DestinationTxt.Text, fileProgress, CancelToken.Token));
-                if (!CancelToken.IsCancellationRequested)
-                {
-                    await CopyComplete();
-                }
             }
             catch (TaskCanceledException)
             { }
@@ -170,7 +202,13 @@ namespace TestForm
             }
             else
             {
-
+                var FBD = new FolderBrowserDialog();
+                var result = FBD.ShowDialog();
+                if(result == DialogResult.OK)
+                {
+                    string FolderName = FBD.SelectedPath;
+                    SourceTxt.Text = FolderName;
+                }
             }
         }
 
@@ -197,8 +235,20 @@ namespace TestForm
             }
             else
             {
-
+                var FBD = new FolderBrowserDialog();
+                FBD.Description = "Select destination folder.";
+                var result = FBD.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    string FolderName = FBD.SelectedPath;
+                    DestinationTxt.Text = FolderName;
+                }
             }
+        }
+
+        private void FileRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            ResetForm();
         }
     }
 }

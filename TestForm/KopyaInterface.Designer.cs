@@ -46,9 +46,9 @@ namespace TestForm
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.SizeStatLbl = new System.Windows.Forms.Label();
             this.SourceErrorLbl = new System.Windows.Forms.Label();
             this.DestinationErrorLbl = new System.Windows.Forms.Label();
-            this.SizeStatLbl = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -133,17 +133,18 @@ namespace TestForm
             this.FileRadio.TabStop = true;
             this.FileRadio.Text = "File";
             this.FileRadio.UseVisualStyleBackColor = true;
+            this.FileRadio.CheckedChanged += new System.EventHandler(this.FileRadio_CheckedChanged);
             // 
             // FolderRadio
             // 
             this.FolderRadio.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.FolderRadio.Enabled = false;
             this.FolderRadio.Location = new System.Drawing.Point(181, 108);
             this.FolderRadio.Name = "FolderRadio";
             this.FolderRadio.Size = new System.Drawing.Size(75, 19);
             this.FolderRadio.TabIndex = 6;
             this.FolderRadio.Text = "Folder";
             this.FolderRadio.UseVisualStyleBackColor = true;
+            this.FolderRadio.CheckedChanged += new System.EventHandler(this.FileRadio_CheckedChanged);
             // 
             // label1
             // 
@@ -228,6 +229,16 @@ namespace TestForm
             this.panel1.Size = new System.Drawing.Size(401, 106);
             this.panel1.TabIndex = 0;
             // 
+            // SizeStatLbl
+            // 
+            this.SizeStatLbl.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.SizeStatLbl.AutoEllipsis = true;
+            this.SizeStatLbl.Location = new System.Drawing.Point(118, 42);
+            this.SizeStatLbl.Name = "SizeStatLbl";
+            this.SizeStatLbl.Size = new System.Drawing.Size(163, 15);
+            this.SizeStatLbl.TabIndex = 1;
+            this.SizeStatLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // SourceErrorLbl
             // 
             this.SourceErrorLbl.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
@@ -247,16 +258,6 @@ namespace TestForm
             this.DestinationErrorLbl.Name = "DestinationErrorLbl";
             this.DestinationErrorLbl.Size = new System.Drawing.Size(244, 15);
             this.DestinationErrorLbl.TabIndex = 0;
-            // 
-            // SizeStatLbl
-            // 
-            this.SizeStatLbl.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.SizeStatLbl.AutoEllipsis = true;
-            this.SizeStatLbl.Location = new System.Drawing.Point(118, 42);
-            this.SizeStatLbl.Name = "SizeStatLbl";
-            this.SizeStatLbl.Size = new System.Drawing.Size(163, 15);
-            this.SizeStatLbl.TabIndex = 1;
-            this.SizeStatLbl.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // Form1
             // 
